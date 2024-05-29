@@ -115,7 +115,7 @@ proc setCookies(self: WxClient, headers: HttpHeaders) =
   for s in headers.table["set-cookie"]:
     let kv = s.split(";")[0].split("=")
     let (k, v) = (kv[0].strip, kv[1].strip)
-    # echo (k, v)
+    logging.debug "set-cookie", (k, v)
     self.cookies[k] = v
 
 proc request(self: WxClient,
@@ -131,9 +131,9 @@ proc request(self: WxClient,
     var uri = url.parseUri
     uri = uri ? (uri.query.decodeQuery.toSeq & params)
 
-    # echo (httpMethod, uri, client.headers, body)
+    logging.debug (httpMethod, uri, client.headers, body)
     let res = await client.request(uri, body = body, httpMethod = httpMethod)
-    # echo res.code
+    logging.debug res.code
     self.setCookies(res.headers)
     result = await res.body
   finally:

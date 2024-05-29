@@ -1,4 +1,5 @@
 import std/[
+  logging,
   sequtils,
   strutils,
   tables,
@@ -46,7 +47,7 @@ proc getAllContacts(self: Wechat): Future[seq[WxContact]] {.async.} =
     suc = resp["Seq"].getInt
     if suc == 0: break
   let emptyGroups = res.filterIt(it.isGroup and it.memberCount == 0)
-  echo "empty groups: ", emptyGroups.len
+  logging.debug "empty groups: ", emptyGroups.len
   return res
 
 proc getLoginUrl*(self: Wechat): Future[(string, string)] {.async.} =
@@ -63,17 +64,17 @@ proc start*(self: Wechat, uuid: string) {.async.} =
     self.user = newWxContact(res["User"])
     for c in res["ContactList"]:
       self.updateContact(c)
-    echo "Contacts: ", self.contacts.len
+    logging.debug "Contacts: ", self.contacts.len
 
   block:
     let res = await self.client.notifyMobile(self.user.userName)
-    echo "notify mobile: ", res
+    logging.notice "notify mobile: ", res
 
   block:
     let res = await self.getAllContacts
     for c in res:
       self.contacts[c.userName] = c
-    echo "Contacts: ", self.contacts.len
+    logging.notice "Contacts: ", self.contacts.len
 
   block:
     while true:
@@ -86,7 +87,7 @@ proc start*(self: Wechat, uuid: string) {.async.} =
               await self.delegate.onMessage(msg.newWxMessage)
         await self.delegate.onSync
       except:
-        echo getCurrentExceptionMsg()
+        logging.error getCurrentExceptionMsg()
       await sleepAsync(self.syncInterval)
 
 proc sendText*(self: Wechat, userName, text: string): Future[JsonNode] {.async.} =
