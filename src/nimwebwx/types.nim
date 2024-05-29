@@ -29,7 +29,7 @@ type
   WxMessage* = ref object
     msgType*: int
     fromUserName*: string
-    toUserName: string
+    toUserName*: string
     content*: string
     raw*: JsonNode
 

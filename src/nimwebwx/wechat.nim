@@ -1,23 +1,3 @@
-#[
-* start()
-  * _login()
-    * core.getUUID()
-    * core.checkLogin()
-    * core.login()
-  * _init()
-    * core.init()
-    * updateContacts()
-    * core.notifyMobile()
-    * _getContact()
-      * core.getContact()
-      * core.batchGetContact() # TODO
-    * syncPolling()
-    * checkPolling()
-* restart()
-  * _init()
-* stop()
-  * logout()
-]#
 import std/[
   sequtils,
   strutils,
@@ -27,7 +7,7 @@ import std/[
 import wxclient, types
 
 export json
-export consts, types
+export consts, types, asyncdispatch
 
 
 
@@ -40,14 +20,17 @@ type
     contacts: Table[string, WxContact]
     user: WxContact
     delegate: WechatDelegate
+    syncInterval: int
 
 method onMessage(self: WechatDelegate, msg: WxMessage) {.async, base.} = discard
+method onSync(self: WechatDelegate) {.async, base.} = discard
 
-proc newWechat*(delegate: WechatDelegate = WechatDelegate.new): Wechat =
+proc newWechat*(delegate: WechatDelegate = WechatDelegate.new, syncInterval = 1000): Wechat =
   result.new
   result.client = newWxClient()
   result.delegate = delegate
   delegate.wechat = result
+  result.syncInterval = syncInterval
 
 proc updateContact(self: Wechat, jso: JsonNode) =
   let c = newWxContact(jso)
@@ -94,17 +77,21 @@ proc start*(self: Wechat, uuid: string) {.async.} =
 
   block:
     while true:
-      let selector = await self.client.syncCheck
-      if selector != SYNC_CHECK_SELECTOR_NORMAL:
-        let res = await self.client.sync
-        if res{"AddMsgCount"}.getInt > 0:
-          for msg in res["AddMsgList"]:
-            await self.delegate.onMessage(msg.newWxMessage)
-      await sleepAsync(1000)
+      try:
+        let selector = await self.client.syncCheck
+        if selector != SYNC_CHECK_SELECTOR_NORMAL:
+          let res = await self.client.sync
+          if res{"AddMsgCount"}.getInt > 0:
+            for msg in res["AddMsgList"]:
+              await self.delegate.onMessage(msg.newWxMessage)
+        await self.delegate.onSync
+      except:
+        echo getCurrentExceptionMsg()
+      await sleepAsync(self.syncInterval)
 
-proc sendText*(self: Wechat, userName, text: string) {.async.} =
+proc sendText*(self: Wechat, userName, text: string): Future[JsonNode] {.async.} =
   let res = await self.client.sendText(self.user.userName, userName, text)
-  echo res
+  return res
 
 proc updateContacts*(self: Wechat, roomUserName: string, roomId = "") {.async.} =
   let res = await self.client.batchGetContact(@[(roomUserName, roomId)])

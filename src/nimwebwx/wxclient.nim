@@ -345,12 +345,10 @@ proc syncCheck*(self: WxClient): Future[string] {.async.} =
     "syncKey": self.props.formatedSyncKey,
   }.toSeq
   let res = await self.request(API_SYNC_CHECK, params = params)
-  try:
-    let jso = res.getKeyVal("window.synccheck").get.parseSyncCheckRes
-    doAssert jso["retcode"].getStr == SYNC_CHECK_RET_SUCCESS
-    return jso["selector"].getStr
-  except:
+  let jso = res.getKeyVal("window.synccheck").get.parseSyncCheckRes
+  if jso["retcode"].getStr != SYNC_CHECK_RET_SUCCESS:
     raise newException(CatchableError, "sync check error: " & res)
+  return jso["selector"].getStr
 
 proc sync*(self: WxClient): Future[JsonNode] {.async.} =
   let params = {
