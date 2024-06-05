@@ -4,6 +4,8 @@ import std/[
   strutils,
 ]
 
+import utils
+
 
 
 type
@@ -16,7 +18,7 @@ type
 proc newWxContact*(jso: JsonNode): WxContact =
   result.new
   result.userName = jso["UserName"].getStr
-  result.nickName = jso["NickName"].getStr
+  result.nickName = jso["NickName"].getStr.convertEmoji
   result.memberCount = jso{"MemberCount"}.getInt
   result.raw = jso
 
