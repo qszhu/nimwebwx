@@ -18,9 +18,15 @@ proc convertEmoji*(s: string): string =
     result &= s[p ..< l]
     result &= matches[0].codePointToString
     p = r + 1
+  result &= s[p .. ^1]
 
 
 
 when isMainModule:
-  let s = """<span class="emoji emoji1f33f"></span>Phoebe Shen<span class="emoji emoji1f495"></span>"""
-  echo s.convertEmoji
+  block:
+    let s = """<span class="emoji emoji1f33f"></span>Phoebe Shen<span class="emoji emoji1f495"></span>"""
+    echo s.convertEmoji
+
+  block:
+    let s = """abc"""
+    echo s.convertEmoji
